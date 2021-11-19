@@ -446,3 +446,35 @@ def get_kpoy(browser, season=None):
 		kpoy_dfs.append(mvp_df)
 
 	return kpoy_dfs
+
+
+def get_archive_ratings(browser, date=None):
+    """
+    Scrapes the Pomeroy College Basketball Ratings table (https://kenpom.com/archive.php) into a dataframe.
+    Args:
+        browser (mechanicalsoup StatefulBrowser): Authenticated browser with full access to kenpom.com generated
+            by the `login` function.
+        date (str, optional): Format as YYYY-MM-DD Used to define different seasons. 2010 is available as a partial season starting February 1, 2011.
+            Most recent season is the default.
+    Returns:
+        archive_df (pandas dataframe): Pandas dataframe containing the Pomeroy College Basketball Ratings table from kenpom.com.
+    Raises:
+        ValueError: If `season` is less than 2011.
+    """
+    url = 'https://kenpom.com/archive.php'
+    if int(date[:4]) < 2011:
+        raise ValueError("Archive data begins at February 1, 2011")
+    url += '?d=' + str(date)
+    browser.open(url)
+    page = browser.get_current_page()
+    table = page.find_all('table')[0]
+    archive_df = pd.read_html(str(table))
+    # Dataframe tidying.
+    archive_df = archive_df[0]
+    archive_df.columns = archive_df.columns.map(lambda x: x[1])
+    archive_df = archive_df[archive_df.Team != 'Team']
+    archive_df = archive_df.dropna(subset=['Team'])
+    # Remove NCAA tourny seeds for previous seasons.
+    archive_df['Team'] = archive_df['Team'].str.replace('\d+', '')
+    archive_df['Team'] = archive_df['Team'].str.rstrip()
+    return archive_df
